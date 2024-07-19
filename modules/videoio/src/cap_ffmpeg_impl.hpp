@@ -927,7 +927,6 @@ public:
         if(!threadSafe)
             lock.lock();
         static InternalFFMpegRegister instance;
-        initLogger_();  // update logger setup unconditionally (GStreamer's libav plugin may override these settings)
     }
     static void initLogger_()
     {
@@ -965,6 +964,7 @@ public:
         /* register a callback function for synchronization */
         av_lockmgr_register(&LockCallBack);
 #endif
+        initLogger_();
     }
     ~InternalFFMpegRegister()
     {
@@ -1484,10 +1484,6 @@ bool CvCapture_FFMPEG::grabFrame()
     size_t cur_decode_attempts = 0;
 
     if( !ic || !video_st || (!rawMode && !context) )  return false;
-
-    if( ic->streams[video_stream]->nb_frames > 0 &&
-        frame_number > ic->streams[video_stream]->nb_frames )
-        return false;
 
     picture_pts = AV_NOPTS_VALUE_;
 

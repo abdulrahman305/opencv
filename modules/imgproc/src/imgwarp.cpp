@@ -206,7 +206,7 @@ static void initInterTab1D(int method, float* tab, int tabsz)
             interpolateLanczos4( i*scale, tab );
     }
     else
-        CV_Error( CV_StsBadArg, "Unknown interpolation method" );
+        CV_Error( cv::Error::StsBadArg, "Unknown interpolation method" );
 }
 
 
@@ -223,7 +223,7 @@ static const void* initInterTab2D( int method, bool fixpt )
     else if( method == INTER_LANCZOS4 )
         tab = Lanczos4Tab_f[0][0], itab = Lanczos4Tab_i[0][0], ksize=8;
     else
-        CV_Error( CV_StsBadArg, "Unknown/unsupported interpolation type" );
+        CV_Error( cv::Error::StsBadArg, "Unknown/unsupported interpolation type" );
 
     if( !inittab[method] )
     {
@@ -1502,7 +1502,7 @@ static bool ocl_logPolar(InputArray _src, OutputArray _dst,
     Point2f center, double M, int flags)
 {
     if (M <= 0)
-        CV_Error(CV_StsOutOfRange, "M should be >0");
+        CV_Error(cv::Error::StsOutOfRange, "M should be >0");
     UMat src_with_border; // don't scope this variable (it holds image data)
 
     UMat mapx, mapy, r, cp_sp;
@@ -1649,12 +1649,12 @@ static bool openvx_remap(Mat src, Mat dst, Mat map1, Mat map2, int interpolation
     }
     catch (const ivx::RuntimeError & e)
     {
-        CV_Error(CV_StsInternal, e.what());
+        CV_Error(cv::Error::StsInternal, e.what());
         return false;
     }
     catch (const ivx::WrapperError & e)
     {
-        CV_Error(CV_StsInternal, e.what());
+        CV_Error(cv::Error::StsInternal, e.what());
         return false;
     }
     return true;
@@ -1799,7 +1799,6 @@ void cv::remap( InputArray _src, OutputArray _dst,
     _dst.create( map1.size(), src.type() );
     Mat dst = _dst.getMat();
 
-
     CV_OVX_RUN(
         src.type() == CV_8UC1 && dst.type() == CV_8UC1 &&
         !ovx::skipSmallImages<VX_KERNEL_REMAP>(src.cols, src.rows) &&
@@ -1815,6 +1814,12 @@ void cv::remap( InputArray _src, OutputArray _dst,
 
     if( dst.data == src.data )
         src = src.clone();
+
+    if ((map1.type() == CV_32FC1) && (map2.type() == CV_32FC1))
+    {
+        CALL_HAL(remap32f, cv_hal_remap32f, src.type(), src.data, src.step, src.cols, src.rows, dst.data, dst.step, dst.cols, dst.rows,
+                 map1.ptr<float>(), map1.step, map2.ptr<float>(), map2.step, interpolation, borderType, borderValue.val);
+    }
 
     interpolation &= ~WARP_RELATIVE_MAP;
     if( interpolation == INTER_AREA )
@@ -1888,7 +1893,7 @@ void cv::remap( InputArray _src, OutputArray _dst,
             CV_Assert( _src.channels() <= 4 );
         }
         else
-            CV_Error( CV_StsBadArg, "Unknown interpolation method" );
+            CV_Error( cv::Error::StsBadArg, "Unknown interpolation method" );
         CV_Assert( ifunc != 0 );
         ctab = initInterTab2D( interpolation, fixpt );
     }
@@ -2236,7 +2241,7 @@ void cv::convertMaps( InputArray _map1, InputArray _map2,
             }
         }
         else
-            CV_Error( CV_StsNotImplemented, "Unsupported combination of input/output matrices" );
+            CV_Error( cv::Error::StsNotImplemented, "Unsupported combination of input/output matrices" );
     }
 }
 
@@ -2496,6 +2501,9 @@ static bool ocl_warpTransform_cols4(InputArray _src, OutputArray _dst, InputArra
     _dst.create( dsize.empty() ? src.size() : dsize, src.type() );
     UMat dst = _dst.getUMat();
 
+    if (src.u == dst.u)
+        src = src.clone();
+
     float M[9] = {0};
     int matRows = (op_type == OCL_OP_AFFINE ? 2 : 3);
     Mat matM(matRows, 3, CV_32F, M), M1 = _M0.getMat();
@@ -2599,6 +2607,9 @@ static bool ocl_warpTransform(InputArray _src, OutputArray _dst, InputArray _M0,
     UMat src = _src.getUMat(), M0;
     _dst.create( dsize.empty() ? src.size() : dsize, src.type() );
     UMat dst = _dst.getUMat();
+
+    if (src.u == dst.u)
+        src = src.clone();
 
     double M[9] = {0};
     int matRows = (op_type == OCL_OP_AFFINE ? 2 : 3);
@@ -3610,7 +3621,7 @@ void cv::invertAffineTransform(InputArray _matM, OutputArray __iM)
         iM[istep] = A21; iM[istep+1] = A22; iM[istep+2] = b2;
     }
     else
-        CV_Error( CV_StsUnsupportedFormat, "" );
+        CV_Error( cv::Error::StsUnsupportedFormat, "" );
 }
 
 cv::Mat cv::getPerspectiveTransform(InputArray _src, InputArray _dst, int solveMethod)
